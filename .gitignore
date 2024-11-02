@@ -1,0 +1,25 @@
+# Data files
+data/
+*.npy
+
+# Model files
+models/
+*.keras
+best_pokemon_model.keras
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
