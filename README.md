@@ -14,6 +14,12 @@
    ```
    This trains the CNN model and saves the best model based on test accuracy.
 
+2.1 **Train the Improved Model**:
+   ```bash
+   python model_trainer_i.py
+   ```
+   This trains the CNN model with improvements.
+
 3. **Make Predictions**:
    ```bash
    python predictor.py
