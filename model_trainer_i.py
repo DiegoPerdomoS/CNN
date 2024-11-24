@@ -1,9 +1,9 @@
-# model_trainer.py
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras import layers, models # type: ignore
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint # type: ignore
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 def load_data(data_dir='data'):
     """
@@ -22,26 +22,35 @@ def load_data(data_dir='data'):
 
 def create_cnn_model(input_shape, num_classes):
     """
-    Create a CNN model for Pokemon classification
+    Create a more stable CNN model with better initial learning capacity
     """
     model = models.Sequential([
+        # Input layer
         layers.Input(shape=input_shape),
-        layers.Conv2D(32, (3, 3), activation='relu'),
+        
+        # First convolutional block - starting smaller
+        layers.Conv2D(32, (3, 3), padding='same', activation='relu'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.Dropout(0.1),  # Reduced dropout
+        
+        # Second convolutional block
+        layers.Conv2D(64, (3, 3), padding='same', activation='relu'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        layers.Conv2D(128, (3, 3), activation='relu'),
+        layers.Dropout(0.1),
+        
+        # Third convolutional block
+        layers.Conv2D(128, (3, 3), padding='same', activation='relu'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.2),
+        
+        # Dense layers
         layers.Flatten(),
-        layers.Dense(512, activation='relu'),
+        layers.Dense(256, activation='relu'),
         layers.BatchNormalization(),
-        layers.Dropout(0.5),
+        layers.Dropout(0.3),
         layers.Dense(num_classes, activation='softmax')
     ])
     
@@ -75,14 +84,19 @@ def plot_training_history(train_accuracies, val_accuracies, test_accuracies,
 
 def train_and_evaluate_model(data, class_names):
     """
-    Train and evaluate the CNN model with test set tracking
+    Train and evaluate the CNN model with more stable parameters
     """
     input_shape = data['X_train'].shape[1:]
     num_classes = len(class_names)
     
     model = create_cnn_model(input_shape, num_classes)
+    
+    # Simpler learning rate schedule
+    initial_learning_rate = 0.001  # Back to standard learning rate
+    optimizer = tf.keras.optimizers.Adam(learning_rate=initial_learning_rate)
+    
     model.compile(
-        optimizer='adam',
+        optimizer=optimizer,
         loss='sparse_categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -94,13 +108,15 @@ def train_and_evaluate_model(data, class_names):
     callbacks = [
         EarlyStopping(
             monitor='val_loss',
-            patience=10,
-            restore_best_weights=True
+            patience=5,
+            restore_best_weights=True,
+            min_delta=0.001
         ),
         ModelCheckpoint(
             best_model_path,
             monitor='val_accuracy',
-            save_best_only=True
+            save_best_only=True,
+            mode='max'
         )
     ]
     
@@ -111,12 +127,22 @@ def train_and_evaluate_model(data, class_names):
     val_losses = []
     test_losses = []
     
+    # Simplified data augmentation
+    data_augmentation = tf.keras.Sequential([
+        layers.RandomFlip("horizontal"),
+        layers.RandomRotation(0.1),
+        layers.RandomZoom(0.1),
+    ])
+    
     print("\nStarting training with test evaluation...")
-    for epoch in range(10):
-        print(f"Epoch {epoch + 1}/10")
+    for epoch in range(20):  # Back to 20 epochs
+        print(f"Epoch {epoch + 1}/20")
+        
+        # Apply data augmentation to training data
+        X_train_aug = data_augmentation(data['X_train'], training=True)
         
         history = model.fit(
-            data['X_train'], data['y_train'],
+            X_train_aug, data['y_train'],
             epochs=1,
             batch_size=32,
             validation_data=(data['X_val'], data['y_val']),
@@ -132,6 +158,12 @@ def train_and_evaluate_model(data, class_names):
         test_loss, test_accuracy = model.evaluate(data['X_test'], data['y_test'], verbose=0)
         test_losses.append(test_loss)
         test_accuracies.append(test_accuracy)
+        
+        # Fixed early stopping check
+        if len(val_losses) > 5:  # Changed from 7 to 5
+            if all(val_losses[-5] < val_losses[-i] for i in range(1, 5)):
+                print("\nEarly stopping triggered!")
+                break
     
     print(f"\nFinal Test accuracy: {test_accuracies[-1]:.4f}")
     plot_training_history(train_accuracies, val_accuracies, test_accuracies, 
