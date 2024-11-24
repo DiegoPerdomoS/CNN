@@ -1,9 +1,9 @@
 # predictor.py
 import os
 import numpy as np
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model # type: ignore
 from PIL import Image
-from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.preprocessing.image import img_to_array # type: ignore
 
 def load_and_preprocess_image(image_path, img_size=(128, 128)):
     """
@@ -69,4 +69,4 @@ if __name__ == "__main__":
         except FileNotFoundError:
             print(f"Error: Image file '{image_path}' not found.")
         except Exception as e:
-            print(f"Error processing image: {str(e)}")
+            print(f"Error processing image: {str(e)}") 
